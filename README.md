@@ -222,3 +222,91 @@ Stop only the simulator:
 ```powershell
 docker compose stop simulator
 ```
+
+
+
+## Local Kubernetes demo with kind
+
+This setup runs PostgreSQL, the backend, the frontend and the synthetic measurement simulator in a local kind cluster.
+
+Requirements: Docker Desktop running with Linux containers, kind and kubectl. Run the commands from the repository root.
+
+### Build the application images
+
+```powershell
+docker build -t heatpump-monitor-backend:latest ./backend
+docker build -t heatpump-monitor-frontend:latest ./frontend
+docker build -t heatpump-monitor-simulator:latest ./simulator
+```
+
+### Create the cluster
+
+Run this once. Skip it if the cluster already exists.
+
+```powershell
+kind create cluster --name heatpump-monitor --wait 120s
+```
+
+### Load the local images
+
+```powershell
+kind load docker-image heatpump-monitor-backend:latest heatpump-monitor-frontend:latest heatpump-monitor-simulator:latest --name heatpump-monitor
+```
+
+The application deployments use `imagePullPolicy: Never` to use images loaded into kind. PostgreSQL uses the public `postgres:17` image.
+
+### Deploy the application
+
+```powershell
+kubectl --context kind-heatpump-monitor apply -f ./k8s/00-namespace.yaml
+kubectl --context kind-heatpump-monitor apply -f ./k8s/01-database.yaml
+kubectl --context kind-heatpump-monitor -n heatpump-monitor rollout status deployment/database --timeout=180s
+kubectl --context kind-heatpump-monitor apply -f ./k8s/02-backend.yaml
+kubectl --context kind-heatpump-monitor -n heatpump-monitor rollout status deployment/backend --timeout=300s
+kubectl --context kind-heatpump-monitor apply -f ./k8s/03-frontend.yaml
+kubectl --context kind-heatpump-monitor -n heatpump-monitor rollout status deployment/frontend --timeout=120s
+kubectl --context kind-heatpump-monitor apply -f ./k8s/04-simulator.yaml
+```
+
+The backend connects to PostgreSQL through the internal `database` Service. Nginx forwards frontend `/api/` requests to the internal `backend:8080` Service.
+
+The backend uses Spring Boot Actuator startup, readiness and liveness probes.
+
+### Open the dashboard
+
+```powershell
+kubectl --context kind-heatpump-monitor -n heatpump-monitor port-forward --address 127.0.0.1 service/frontend 8083:80
+```
+
+Keep this terminal open and visit http://localhost:8083.
+
+Select Heatpump A or Heatpump B to view synthetic measurements. The dashboard polls every ten seconds. Press Ctrl+C to stop port-forwarding; the workloads continue running.
+
+### Check workloads and storage
+
+Run these commands in another terminal:
+
+```powershell
+kubectl --context kind-heatpump-monitor -n heatpump-monitor get pods,pvc
+kubectl --context kind-heatpump-monitor -n heatpump-monitor logs deployment/simulator --tail=20
+```
+
+PostgreSQL uses a 1Gi PersistentVolumeClaim with kind's `standard` local-path StorageClass. The volume survives replacement of the database Pod within the existing cluster.
+
+The Kubernetes database is separate from the Docker Compose database. Existing Compose data is not automatically transferred.
+
+This storage is intended for a local demo. Deleting the PVC or kind cluster can remove the database data. The database credentials in the manifests are local demo values.
+
+### Stop or restart the simulator
+
+```powershell
+kubectl --context kind-heatpump-monitor -n heatpump-monitor scale deployment/simulator --replicas=0
+```
+
+Restart it with:
+
+```powershell
+kubectl --context kind-heatpump-monitor -n heatpump-monitor scale deployment/simulator --replicas=1
+```
+
+This is a learning and portfolio project, not a production deployment. Measurements are synthetic, and device statuses are fixed demo values.
