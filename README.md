@@ -20,14 +20,50 @@ The application stores simulated temperature and pressure measurements and displ
 - Backend: Kotlin, Spring Boot, Gradle, Spring Data JPA
 - Database: PostgreSQL 17
 - Frontend: React, TypeScript, Vite, Recharts
-- Local database environment: Docker Compose
+- Container environment: Docker Compose for frontend, backend and database
 
 ## Architecture
 
-The React dashboard sends requests through Vite's development proxy to the Kotlin REST API. The backend reads and writes measurements in PostgreSQL.
+The React dashboard communicates with the Kotlin REST API through Nginx in Docker, or through the Vite proxy during local development. The backend reads and writes measurements in PostgreSQL.
 
-Currently, PostgreSQL runs in Docker. The backend and frontend run locally in separate terminals.
+The frontend, backend and PostgreSQL database run in separate Docker containers. Nginx serves the dashboard and forwards API requests to the backend.
 
+## Run the full application with Docker
+
+Start Docker Desktop, then run from the project root:
+
+```powershell
+docker compose up -d --build
+```
+
+The first build downloads dependencies and may take several minutes.
+
+- Dashboard: http://localhost:8082
+- Backend API: http://localhost:8081/api/devices
+- Backend health: http://localhost:8081/actuator/health
+- PostgreSQL host port: 5433
+
+All three services run in Docker. No separate `bootRun` or `npm run dev` process is needed for this mode.
+
+Check service status:
+
+```powershell
+docker compose ps
+```
+
+Inspect backend logs:
+
+```powershell
+docker compose logs --tail=100 backend
+```
+
+Stop the application:
+
+```powershell
+docker compose stop
+```
+
+Database data is stored in a named Docker volume and survives container recreation.
 ## Requirements
 
 - JDK 21
@@ -63,14 +99,14 @@ In a separate PowerShell window, from the project root:
 
 ```powershell
 cd backend
-.\gradlew.bat bootRun
+.\gradlew.bat bootRun --args="--server.port=8081"
 ```
 
 Keep this window running.
 
-Backend: http://localhost:8080
+Backend: http://localhost:8081
 
-Health check: http://localhost:8080/actuator/health
+Health check: http://localhost:8081/actuator/health
 
 ### 3. Start the frontend
 
@@ -99,7 +135,7 @@ $sample = @{
 } | ConvertTo-Json
 
 Invoke-RestMethod -Method Post `
-    -Uri "http://localhost:8080/api/devices/1/measurements" `
+    -Uri "http://localhost:8081/api/devices/1/measurements" `
     -ContentType "application/json" `
     -Body $sample
 ```
@@ -157,8 +193,6 @@ Run these commands from the project root in separate terminals.
 
 - Continuous measurement simulator
 - Rule-based diagnostic alerts
-- Docker images for backend and frontend
-- Full application startup with Docker Compose
 - Local Kubernetes deployment with health probes
 - Isolated test database and database migrations
 

@@ -15,5 +15,27 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/heatpump
+      SPRING_DATASOURCE_USERNAME: heatpump
+      SPRING_DATASOURCE_PASSWORD: local_demo_only
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:8082:80"
+    depends_on:
+      backend:
+        condition: service_started
+
 volumes:
   postgres_data:
