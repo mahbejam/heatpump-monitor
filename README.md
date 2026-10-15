@@ -185,13 +185,12 @@ Run these commands from the project root in separate terminals.
 ## Current limitations
 
 - Device statuses are seeded demo values.
-- Measurements are submitted manually; a continuous simulator is planned.
+- The optional simulator generates synthetic data for devices A and B; no real heat pumps are connected.; a continuous simulator is planned.
 - No authentication or production security configuration is implemented.
 - Backend integration tests currently require the local database.
 
 ## Next steps
 
-- Continuous measurement simulator
 - Rule-based diagnostic alerts
 - Local Kubernetes deployment with health probes
 - Isolated test database and database migrations
@@ -199,3 +198,27 @@ Run these commands from the project root in separate terminals.
 ## Learning focus
 
 This project explores Kotlin and Spring Boot, REST API design, PostgreSQL persistence, React components, asynchronous data fetching and polling cleanup.
+
+## Live demo simulator
+
+Start the application with the optional simulator:
+
+```powershell
+docker compose --profile demo up -d --build
+```
+
+Open http://localhost:8082 and select Heatpump A or Heatpump B.
+
+The simulator sends synthetic temperature and pressure measurements approximately every five seconds. The dashboard fetches measurements every ten seconds. Device statuses remain seeded demo values.
+
+View simulator logs:
+
+```powershell
+docker compose logs --tail=20 simulator
+```
+
+Stop only the simulator:
+
+```powershell
+docker compose stop simulator
+```

@@ -37,5 +37,16 @@ services:
       backend:
         condition: service_started
 
+  simulator:
+    build:
+      context: ./simulator
+    environment:
+      API_URL: http://backend:8080
+    depends_on:
+      backend:
+        condition: service_started
+    profiles:
+      - demo
+
 volumes:
   postgres_data:
