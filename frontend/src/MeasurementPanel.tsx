@@ -20,57 +20,72 @@ type Measurement = {
 
 type Props = {
   deviceId: number
+  deviceName: string
 }
-
-export default function MeasurementPanel({ deviceId }: Props) {
+export default function MeasurementPanel({ deviceId, deviceName }: Props) {
   const [measurements, setMeasurements] = useState<Measurement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
 
-  useEffect(() => {
-    const controller = new AbortController()
+ useEffect(() => {
+  const controller = new AbortController()
+  let fetching = false
 
-    async function loadMeasurements() {
-      setLoading(true)
-      setError('')
-      setMeasurements([])
+  setLoading(true)
+  setError('')
 
-      try {
-        const response = await fetch(
-          `/api/devices/${deviceId}/measurements`,
-          { signal: controller.signal },
-        )
+  async function loadMeasurements() {
+    if (fetching || controller.signal.aborted) return
+    fetching = true
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
+    try {
+      const response = await fetch(
+        `/api/devices/${deviceId}/measurements`,
+        { signal: controller.signal },
+      )
 
-        const data: Measurement[] = await response.json()
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
 
-        // API returns newest first; the chart shows oldest first.
+      const data: Measurement[] = await response.json()
+
+      if (!controller.signal.aborted) {
         setMeasurements([...data].reverse())
-      } catch {
-        if (!controller.signal.aborted) {
-          setError('Die Messwerte konnten nicht geladen werden.')
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setError('')
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setError('Die Messwerte konnten nicht geladen werden.')
+      }
+    } finally {
+      fetching = false
+
+      if (!controller.signal.aborted) {
+        setLoading(false)
       }
     }
+  }
 
+  void loadMeasurements()
+
+  const intervalId = window.setInterval(() => {
     void loadMeasurements()
+  }, 10_000)
 
-    return () => controller.abort()
-  }, [deviceId, refresh])
+  return () => {
+    window.clearInterval(intervalId)
+    controller.abort()
+  }
+}, [deviceId, refresh])
+
 
   const latest = measurements[measurements.length - 1]
 
   return (
     <section style={{ marginTop: 32, minWidth: 0 }}>
-      <h2>Messwerte · Gerät {deviceId}</h2>
+      <h2>Messwerte · {deviceName}</h2>
 
       <button
         type="button"
@@ -115,13 +130,18 @@ export default function MeasurementPanel({ deviceId }: Props) {
                   }
                 />
 
-                <YAxis yAxisId="temperature" unit=" °C" />
+                <YAxis
+  yAxisId="temperature"
+  unit=" °C"
+  stroke="#ea580c"
+/>
 
                 <YAxis
-                  yAxisId="pressure"
-                  orientation="right"
-                  unit=" bar"
-                />
+  yAxisId="pressure"
+  orientation="right"
+  unit=" bar"
+  stroke="#2563eb"
+/>
 
                 <Tooltip
                   labelFormatter={(value) =>
@@ -145,6 +165,7 @@ export default function MeasurementPanel({ deviceId }: Props) {
                   dataKey="pressureBar"
                   name="Druck (bar)"
                   stroke="#2563eb"
+                  strokeDasharray="6 4"
                   dot={{ r: 4 }}
                   isAnimationActive={false}
                 />

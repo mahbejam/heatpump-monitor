@@ -149,9 +149,13 @@ export default function App() {
 
               {selectedId !== null && (
                 <MeasurementPanel
-                  key={selectedId}
-                  deviceId={selectedId}
-                />
+  key={selectedId}
+  deviceId={selectedId}
+  deviceName={
+    devices.find((device) => device.id === selectedId)?.name
+    ?? `Gerät ${selectedId}`
+  }
+/>
               )}
             </>
           )}
