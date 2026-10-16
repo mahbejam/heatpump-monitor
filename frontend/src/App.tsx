@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import MeasurementPanel from './MeasurementPanel'
+import AlertPanel from './AlertPanel'
 
 type Device = {
   id: number
@@ -40,8 +41,11 @@ export default function App() {
         }
 
         const data: Device[] = await response.json()
-        setDevices(data)
-        setSelectedId(data[0]?.id ?? null)
+
+        if (!controller.signal.aborted) {
+          setDevices(data)
+          setSelectedId(data[0]?.id ?? null)
+        }
       } catch {
         if (!controller.signal.aborted) {
           setError('Die Geräte konnten nicht geladen werden.')
@@ -57,6 +61,10 @@ export default function App() {
 
     return () => controller.abort()
   }, [])
+
+  const selectedDevice = devices.find(
+    (device) => device.id === selectedId,
+  )
 
   return (
     <main
@@ -85,6 +93,10 @@ export default function App() {
         <>
           <h2>Geräteübersicht</h2>
           <p>{devices.length} Geräte</p>
+          <p>
+            Gerätestatus sind feste Demo-Werte.
+            Warnungen werden separat aus Messwerten berechnet.
+          </p>
 
           {devices.length === 0 ? (
             <p>Noch keine Geräte vorhanden.</p>
@@ -147,15 +159,18 @@ export default function App() {
                 </table>
               </div>
 
-              {selectedId !== null && (
-                <MeasurementPanel
-  key={selectedId}
-  deviceId={selectedId}
-  deviceName={
-    devices.find((device) => device.id === selectedId)?.name
-    ?? `Gerät ${selectedId}`
-  }
-/>
+              {selectedDevice && (
+                <div key={selectedDevice.id}>
+                  <AlertPanel
+                    deviceId={selectedDevice.id}
+                    deviceName={selectedDevice.name}
+                  />
+
+                  <MeasurementPanel
+                    deviceId={selectedDevice.id}
+                    deviceName={selectedDevice.name}
+                  />
+                </div>
               )}
             </>
           )}

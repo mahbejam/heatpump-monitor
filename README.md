@@ -223,7 +223,42 @@ Stop only the simulator:
 docker compose stop simulator
 ```
 
+## Rule-based demo alerts
 
+`GET /api/devices/{deviceId}/alerts` evaluates the latest measurement using these demo rules:
+
+| Code | Condition |
+| --- | --- |
+| HIGH_TEMPERATURE | Temperature > 60 °C |
+| LOW_PRESSURE | Pressure < 1 bar |
+| HIGH_PRESSURE | Pressure > 3 bar |
+
+Values exactly at the thresholds do not trigger alerts. These thresholds are illustrative and are not technical operating limits for real equipment.
+
+The response includes the evaluated measurement ID, its timestamp and the current alerts. For a device without measurements, the measurement ID and timestamp are null. An unknown device returns HTTP 404.
+
+Alerts are calculated on request and are not stored as an alert history. A new normal measurement clears current alerts. Older abnormal measurements remain in the measurement history.
+
+The dashboard refreshes alerts every ten seconds and displays the evaluated measurement timestamp. Alert loading errors are shown separately from measurement loading errors. Device statuses remain fixed demo values.
+
+### Run alert unit tests
+
+From the repository root:
+
+```powershell
+.\backend\gradlew.bat -p .\backend test --tests "at.demo.heatpump.device.AlertServiceTest"
+```
+
+These tests do not require a database.
+
+### Manual verification
+
+Verified in the local Kubernetes demo:
+
+- A device without measurements returns null measurement metadata.
+- Temperature 70 °C and pressure 3.5 bar trigger both high-temperature and high-pressure alerts.
+- A subsequent measurement of 45 °C and 2 bar clears the alerts.
+- The dashboard displays and clears these alerts automatically without a page refresh.
 
 ## Local Kubernetes demo with kind
 
