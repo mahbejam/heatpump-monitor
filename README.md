@@ -260,6 +260,9 @@ Verified in the local Kubernetes demo:
 - A subsequent measurement of 45 °C and 2 bar clears the alerts.
 - The dashboard displays and clears these alerts automatically without a page refresh.
 
+## Dashboard preview
+
+![Dashboard showing demo devices, current rule-based alerts and temperature and pressure measurements](docs/images/dashboard.png)
 ## Local Kubernetes demo with kind
 
 This setup runs PostgreSQL, the backend, the frontend and the synthetic measurement simulator in a local kind cluster.
